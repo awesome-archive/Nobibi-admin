@@ -80,46 +80,57 @@ export default {
   },
   effects: {
     *query({ payload }, { call, put, select }) {
-      const { success, data } = yield call(queryUserInfo, {
-        username: window.localStorage.getItem('username'),
-      })
+      const username = window.localStorage.getItem('username')
+
       const { locationPathname } = yield select(_ => _.app)
-      if (success && data) {
-        const userInfo = data
-        window.localStorage.setItem('controlCode', userInfo._id)
-        let permissions = {
-          visit: [],
-        }
-        permissions.visit = userInfo.visit
-        let routeList = [
-          {
-            id: '0',
-            name: 'Dashboard',
-            zh: {
-              name: '面板',
+      if (username) {
+        const { success, data } = yield call(queryUserInfo, {
+          username,
+        })
+        if (success && data) {
+          const userInfo = data
+          window.localStorage.setItem('controlCode', userInfo._id)
+          let permissions = {
+            visit: [],
+          }
+          permissions.visit = userInfo.visit
+          let routeList = [
+            {
+              id: '0',
+              name: 'Dashboard',
+              zh: {
+                name: '面板',
+              },
+              icon: 'dashboard',
+              route: '/dashboard',
             },
-            icon: 'dashboard',
-            route: '/dashboard',
-          },
-        ]
-        const routeListFilter = routes.filter(item => {
-          return permissions.visit.includes(String(item.id))
-        })
-        routeList = [...routeList, ...routeListFilter]
-        yield put({
-          type: 'updateState',
-          payload: {
-            userInfo,
-            permissions,
-            routeList,
-          },
-        })
-        if (pathMatchRegexp(['/', '/login'], window.location.pathname)) {
+          ]
+          const routeListFilter = routes.filter(item => {
+            return permissions.visit.includes(String(item.id))
+          })
+          routeList = [...routeList, ...routeListFilter]
+          yield put({
+            type: 'updateState',
+            payload: {
+              userInfo,
+              permissions,
+              routeList,
+            },
+          })
+          if (pathMatchRegexp(['/', '/login'], window.location.pathname)) {
+            router.push({
+              pathname: '/dashboard',
+            })
+          }
+        } else if (queryLayout(config.layouts, locationPathname) !== 'public') {
           router.push({
-            pathname: '/dashboard',
+            pathname: '/login',
+            search: stringify({
+              from: locationPathname,
+            }),
           })
         }
-      } else if (queryLayout(config.layouts, locationPathname) !== 'public') {
+      } else {
         router.push({
           pathname: '/login',
           search: stringify({
@@ -130,36 +141,37 @@ export default {
     },
 
     *signOut({ payload }, { call, put }) {
-      const data = yield call(logoutUser)
-      // Cookies.remove('username')
-      if (data.success) {
-        yield put({
-          type: 'updateState',
-          payload: {
-            userInfo: {},
-            permissions: {
-              visit: [],
-            },
-            routeList: [
-              {
-                id: '0',
-                name: 'Dashboard',
-                zh: {
-                  name: '面板',
-                },
-                icon: 'dashboard',
-                route: '/dashboard',
-              },
-            ],
-          },
-        })
-        window.localStorage.removeItem('Token')
-        yield put({
-          type: 'query',
-        })
-      } else {
-        throw data
-      }
+      // const data = yield call(logoutUser)
+      // // Cookies.remove('username')
+      // if (data.success) {
+      //   yield put({
+      //     type: 'updateState',
+      //     payload: {
+      //       userInfo: {},
+      //       permissions: {
+      //         visit: [],
+      //       },
+      //       routeList: [
+      //         {
+      //           id: '0',
+      //           name: 'Dashboard',
+      //           zh: {
+      //             name: '面板',
+      //           },
+      //           icon: 'dashboard',
+      //           route: '/dashboard',
+      //         },
+      //       ],
+      //     },
+      //   })
+      window.localStorage.removeItem('Token')
+      window.localStorage.removeItem('username')
+      yield put({
+        type: 'query',
+      })
+      // } else {
+      //   throw data
+      // }
     },
   },
   reducers: {
